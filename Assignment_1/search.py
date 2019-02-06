@@ -73,27 +73,25 @@ def tinyMazeSearch(problem):
     return  [s, s, w, s, w, w, s, w]
 
 def depthFirstSearch(problem):
-
-    stack = util.Stack() #The stack to use
     
-    state, actions, cost = problem.getStartState(), [], 0 #The initial starting condition
+    stack = util.Stack() #The stack to use
 
-    visited = [state] #The visited spots
+    visited = [] #The visited spots
 
-    while (not problem.isGoalState(state)): #Loop until you've reached the goal
-      
-      children = problem.getSuccessors(state) #Get the potential moves
+    stack.push((problem.getStartState() ,[], 0)); #The initial starting condition
 
-      for next_pos, action, cost in children: #Loop through the children
-        
-        if (not next_pos in visited): #If we haven't already visited this node
+    while stack.isEmpty() == False: #Loop until you've reached the goal
+        state, path, cost = stack.pop(); #Get the next move
 
-          stack.push((next_pos, actions+[action], cost+cost)) #Add it to the stack
-          visited.append(next_pos) #And add it to the visited states
+        if state not in visited: #If we haven't already visited this node
 
-      state, actions, cost = stack.pop() #Pop the next position
+            visited += [state] #Add it to the visited states
 
-    return  actions #Return the set of steps
+            if problem.isGoalState(state): #If this is the goal state, return
+                return path
+
+            for next_pos, move, cost in problem.getSuccessors(state): #Get the potential moves, loop through them
+                stack.push((next_pos, path+[move], cost)) #Puth the next moves onto the stack
 
 
 def breadthFirstSearch(problem):

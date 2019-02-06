@@ -507,6 +507,7 @@ class ClosestDotSearchAgent(SearchAgent):
         problem = AnyFoodSearchProblem(gameState)
 
         "*** YOUR CODE HERE ***"
+
         #Since we don't care about the actual weighting of the dots and we just want
         #to find the closest one, we can use aStar with a null Heuristic search
         return search.aStarSearch(problem, search.nullHeuristic)
@@ -545,6 +546,7 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         x,y = state
 
         "*** YOUR CODE HERE ***"
+        
         #Found via looking at pacmna.py, line #174
         return self.food[x][y]
 
