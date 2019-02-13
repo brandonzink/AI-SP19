@@ -168,6 +168,64 @@ class MinimaxAgent(MultiAgentSearchAgent):
     Your minimax agent (question 2)
     """
 
+    #Takes the current state, min/max behavior (str), agent # (int), and depth (int)
+    def min_max_tree_builder(self, state, behavior, agent, depth):
+        """
+        This function does the bulk of the work. It will switch back and forth between
+        Pacman (maximizing agent) and the ghosts (minimizing agents) to build a min/max
+        tree of some depth n (as described in the project writeup). As it iterates through,
+        at each level it will return the min/max score and the corresponding min/max move.
+        Once either the depth has been hit or Pacman wins/loses, it will return the state.
+        """
+
+        #If we have won, lost, or reached the inputted depth, return the final score
+        if (state.isWin() == True) or (state.isLose() == True) or (depth == 0):
+            return self.evaluationFunction(state), Directions.STOP
+
+        #Get the legal actions to test for the agent, 0 = Pacman, 1+ = ghosts
+        legal_actions = state.getLegalActions(agent)
+
+        #This holds the possible scores
+        scores = []
+
+        """
+        This function runs it for Pacman, building out a tree by calling the ghosts for every
+        legal Pacman action and appending the scores to a list. It then takes the max score since
+        it is a maximizing agent and returns that and the action. 
+        """
+        if behavior == 'max':
+            #Build out the tree, calling the next level with ghosts for ever Pacman action
+            for actions in legal_actions:
+                scores.append(self.min_max_tree_builder(state=state.generateSuccessor(agent, actions), behavior='min', agent=1, depth=depth-1)[0])
+            max_score = max(scores) #The best score in the list
+            max_index = scores.index(max_score) #The index of the best action to take
+            return max_score, legal_actions[max_index]
+
+        """
+        This is pretty much identical to the behvaior == 'max' above, but instead is for a 
+        minimizing agent (ghosts) and calls Pacman for the next level of the tree. We also need
+        to check to see if it is the last ghost of not, becuase if it is not then we haven't gone 
+        down to the next depth and we don't call Pacman yet.
+        """
+        if behavior == 'min':
+            #If we are not at the last agent, run as above, calling the next agent (ghost) and not moving down
+            if agent != state.getNumAgents() - 1:
+                for actions in legal_actions:
+                    scores.append(self.min_max_tree_builder(state=state.generateSuccessor(agent, actions), behavior='min', agent=agent+1, depth=depth)[0])
+            #If this is the last ghost
+            if agent == state.getNumAgents() - 1:
+                for actions in legal_actions:
+                    scores.append(self.min_max_tree_builder(state=state.generateSuccessor(agent, actions), behavior='max', agent=0, depth=depth-1)[0])
+            min_score = min(scores) #The lowest score in the list
+            min_index = scores.index(min_score) #The index of the lowest score
+            return min_score, legal_actions[min_index]
+
+
+
+
+
+        return
+
     def getAction(self, gameState):
         """
         Returns the minimax action from the current gameState using self.depth
@@ -192,6 +250,10 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
+
+        #Calls the function above, return the direction
+        return self.min_max_tree_builder(state=gameState, behavior='max', agent=0, depth=self.depth*2)[1]
+
         util.raiseNotDefined()
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
