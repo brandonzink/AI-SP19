@@ -109,7 +109,7 @@ class ReflexAgent(Agent):
 		"""
 		if max(newScaredTimes) == 0:
 			for ghostPos in newGhostStates:
-				score -= ghostScore * math.exp(-1.0 * decayRate * util.manhattanDistance(newPos, ghostPos.getPosition()))
+				score += ghostScore * math.exp(-1.0 * decayRate * util.manhattanDistance(newPos, ghostPos.getPosition()))
 				if (util.manhattanDistance(newPos, ghostPos.getPosition())<2): #If we are either 1 or 0 moves from a ghost
 					score -= 99999
 
@@ -347,6 +347,61 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
 	  Your expectimax agent (question 4)
 	"""
 
+	#Takes the current state, min/max behavior (str), agent # (int), and depth (int)
+	def expectimax_tree_builder(self, state, behavior, agent, depth):
+		"""
+		This is copied from question 2 exactly, the only part changed is the ghosts
+		part (behavior = 'min') to fit the expectimax description. The changes are 
+		described in that section. 
+		"""
+
+		#If we have won, lost, or reached the inputted depth, return the final score
+		if (state.isWin() == True) or (state.isLose() == True) or (depth == 0):
+			return self.evaluationFunction(state), Directions.STOP
+
+		#Get the legal actions to test for the agent, 0 = Pacman, 1+ = ghosts
+		legal_actions = state.getLegalActions(agent)
+
+		#This holds the possible scores
+		scores = []
+
+		"""
+		This function runs it for Pacman, building out a tree by calling the ghosts for every
+		legal Pacman action and appending the scores to a list. It then takes the max score since
+		it is a maximizing agent and returns that and the action. 
+		"""
+		if behavior == 'max':
+			#Build out the tree, calling the next level with ghosts for ever Pacman action
+			for actions in legal_actions:
+				scores.append(self.expectimax_tree_builder(state=state.generateSuccessor(agent, actions), behavior='min', agent=1, depth=depth-1)[0])
+			max_score = max(scores) #The best score in the list
+			max_index = scores.index(max_score) #The index of the best action to take
+			return max_score, legal_actions[max_index]
+
+		"""
+		This is pretty much identical to the behvaior == 'max' above, but instead is for a 
+		minimizing agent (ghosts) and calls Pacman for the next level of the tree. We also need
+		to check to see if it is the last ghost of not, becuase if it is not then we haven't gone 
+		down to the next depth and we don't call Pacman yet.
+		"""
+		if behavior == 'min':
+
+			random_score = 0 #Holds the sum of the scores for each move
+			
+			#If we are not at the last agent, run as above, calling the next agent (ghost) and not moving down, summing the possible moves
+			if agent != state.getNumAgents() - 1:
+				for actions in legal_actions:
+					random_score += self.expectimax_tree_builder(state=state.generateSuccessor(agent, actions), behavior='min', agent=agent+1, depth=depth)[0]
+			#If this is the last ghost, sum the scores of the possible moves
+			if agent == state.getNumAgents() - 1:
+				for actions in legal_actions:
+					random_score += self.expectimax_tree_builder(state=state.generateSuccessor(agent, actions), behavior='max', agent=0, depth=depth-1)[0]
+			#Return the average score for each ghost move, Directions.STOP just serves as a placeholder
+			#since the code was set up to also return a direction
+			return random_score/len(legal_actions), Directions.STOP
+
+		return "Failure"
+
 	def getAction(self, gameState):
 		"""
 		Returns the expectimax action using self.depth and self.evaluationFunction
@@ -355,17 +410,76 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
 		legal moves.
 		"""
 		"*** YOUR CODE HERE ***"
-		util.raiseNotDefined()
+		#Calls the function above, returns the direction (the [1] at the end)
+		return self.expectimax_tree_builder(state=gameState, behavior='max', agent=0, depth=self.depth*2)[1]
 
 def betterEvaluationFunction(currentGameState):
 	"""
 	Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
 	evaluation function (question 5).
 
-	DESCRIPTION: <write something here so we know what you did>
+	DESCRIPTION: Using the same logic as I did in question 1, assign some score to 
+	food, power ups, and ghosts (messed around with until passing) and a decay rate
+	(again, messed around with until passing). These are identical to the ones I used
+	in question 1. Score every food pellet using the decay rate function from class, and 
+	give that a negative value since being farther away from food (higher number) is bad. 
+	Then, check the distances to the ghosts, and a assign a positive value since being farther
+	away from ghosts (high number) is good. If we are right next to a ghost, assign a very very
+	low number since we could lose the game. If the ghosts are scared, we don't care where they are
+	at, and do not score the ghosts. Then, using the same methodology as food, check the power
+	up pellets. That gives us our final score.
 	"""
 	"*** YOUR CODE HERE ***"
-	util.raiseNotDefined()
+		
+	#Copied from question 1 and updated to current instead of succesor
+	pos = currentGameState.getPacmanPosition()
+	food = currentGameState.getFood()
+	ghostStates = currentGameState.getGhostStates()
+	scaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
+	"""
+	Three things need to be considered here: where is the food at, where are the
+	power up things at, and where are the ghosts at
+	"""
+
+	"""
+	These scores were taken from question 1
+	"""
+	foodScore = 1
+	powerUpScore = 2
+	ghostScore = -5.5
+
+	decayRate = 0.25 #our decay rate for n moves
+	score = 0 #our score holder (higher is better)
+
+
+	"""
+	Here we are looking at the distance for all of the food pellets using the decay rate
+	as described in class. Since being close to food is better, we want a negative score
+	if food is far away.
+	"""
+	for food in food.asList(): #Score the rest of them using the decay rate method from lecture slides
+		score -= foodScore * (1 - math.exp(-1.0 * decayRate * util.manhattanDistance(pos, food)))
+
+
+	"""
+	If the ghosts are not scared (max(scaredTimes == 0)), we want a positive value, since it is
+	better if the ghosts are far away. If the ghosts are very close (1 spot away), we consider that 
+	to be very bad and make it -99999 so it would only take that option last.
+	"""
+	if max(scaredTimes) == 0:
+		for ghostPos in ghostStates:
+			score += ghostScore * math.exp(-1.0 * decayRate * util.manhattanDistance(pos, ghostPos.getPosition()))
+			if (util.manhattanDistance(pos, ghostPos.getPosition())<2): #If we are either 1 or 0 moves from a ghost
+				score -= 99999
+
+
+	"""
+	This is the same method as the food, except with the power ups.
+	"""
+	for powerUp in currentGameState.data.capsules:
+		score -= powerUpScore * math.exp(-1.0 * decayRate * util.manhattanDistance(pos, powerUp))
+
+	return score
 
 # Abbreviation
 better = betterEvaluationFunction
