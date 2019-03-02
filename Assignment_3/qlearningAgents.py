@@ -39,6 +39,8 @@ class QLearningAgent(ReinforcementAgent):
         ReinforcementAgent.__init__(self, **args)
 
         "*** YOUR CODE HERE ***"
+        #Holds all the visited q values for each state action combo
+        self.q_map = {}
 
     def getQValue(self, state, action):
         """
@@ -47,7 +49,10 @@ class QLearningAgent(ReinforcementAgent):
           or the Q node value otherwise
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        if (state,action) in self.q_map:
+        	return self.q_map[(state,action)]
+        else:
+        	return 0.0
 
 
     def computeValueFromQValues(self, state):
@@ -58,7 +63,21 @@ class QLearningAgent(ReinforcementAgent):
           terminal state, you should return a value of 0.0.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #Holds the the q vals for the legal moves
+        all_q_vals = []
+
+        #Loop through all the leagal moves and get their q values
+        for action in self.getLegalActions(state):
+        	all_q_vals.append(self.getQValue(state, action))
+
+        #If there are no legal moves
+        if len(all_q_vals) == 0:
+        	return 0.0
+
+        #Return the max q value of all the moves
+        else:
+        	return max(all_q_vals)
+        
 
     def computeActionFromQValues(self, state):
         """
@@ -67,7 +86,20 @@ class QLearningAgent(ReinforcementAgent):
           you should return None.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #Set the max value to the current state
+        max_val = self.getValue(state)
+
+        #MAY NOT WORK, IN LINE LOOPS ARE WEIRD
+        #Calculate the best action if its q val is equal to the current state value
+        max_actions = [action for action in self.getLegalActions(state) if self.getQValue(state, action) == max_val]
+
+        #If there is no legal moves
+        if len(max_actions) == 0:
+        	return None
+        #Else, return the best action (I just chose the fisrt one)
+        else:
+        	return max_actions[0]
+
 
     def getAction(self, state):
         """
@@ -84,7 +116,12 @@ class QLearningAgent(ReinforcementAgent):
         legalActions = self.getLegalActions(state)
         action = None
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #If the flip coins succees, choose a random action, else use the 
+        #getPolicy function and return that action
+        if util.flipCoin(self.epsilon):
+        	action = random.choice(legalActions)
+        else:
+        	action = self.getPolicy(state)
 
         return action
 
@@ -98,7 +135,15 @@ class QLearningAgent(ReinforcementAgent):
           it will be called on your behalf
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        discount = self.discount
+        alpha = self.alpha
+        q_val = self.getQValue(state, action)
+        next_val = self.getValue(nextState)
+
+        #From lecture slides
+        new_qval = (1-alpha) * q_val + alpha * (reward + discount * next_val)
+
+        self.q_map[(state, action)] = new_qval
 
     def getPolicy(self, state):
         return self.computeActionFromQValues(state)
@@ -161,14 +206,28 @@ class ApproximateQAgent(PacmanQAgent):
           where * is the dotProduct operator
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        feat = self.featExtractor.getFeatures(state, action)
+        q_val = 0
+
+        for feature in feat:
+        	q_val += self.weights[feature] * feat[feature]
+
+        return q_val
 
     def update(self, state, action, nextState, reward):
         """
            Should update your weights based on transition
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        feat = self.featExtractor.getFeatures(state, action)
+
+        #Got this from a YouTube video since I couldn't find a good explination
+        #in lectures anywhere for the correction
+        corr = reward + self.discount*self.getValue(nextState) - self.getQValue(state, action)
+
+        #Loop over the features and update the weights
+        for feature in feat:
+        	self.weights[feature] += self.alpha * corr * feat[feature]
 
     def final(self, state):
         "Called at the end of each game."
@@ -179,4 +238,6 @@ class ApproximateQAgent(PacmanQAgent):
         if self.episodesSoFar == self.numTraining:
             # you might want to print your weights here for debugging
             "*** YOUR CODE HERE ***"
+            #print("Weights Final")
+            #print(self.weights)
             pass
